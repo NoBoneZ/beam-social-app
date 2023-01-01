@@ -1,0 +1,513 @@
+{% extends 'base_generic.html' %}
+{% load static %}
+{% load app_filter %}
+{% block content %}
+  <div class="mx-auto p-4 w-full flex flex-col">
+<div class="flex flex-col">
+  <h3 class="text-xs text-gray-500">{{members.count}} members available </h3>
+
+     <span  class="flex gap-2 ">
+  <h2 class = "font-bold text-xl">{{group.name_of_group}}</h2>
+     <a href="{% url 'groups:exit_group' request.user.id group.id %}" title="Exit Group" class="pt-1"><i class="fa fa-sign-out"></i></a>
+   </span>
+
+    <p>{{group.title}}</p>
+  <small claas="opacity-50 text-gray-300 text-xs"> by {{group.owner}}</small>
+
+    {% if check_member.is_admin %}
+    <a href="{% url 'groups:edit_group_details' group.id %}"><i class="fa fa-cogs" style="font-size:24px"></i></a>
+    {% endif %}
+</div>
+
+  {% if group.picture %}
+  <img src="{{group.picture.url}}" alt="{{group.name_of_group}}">
+  {% endif %}
+
+
+  
+
+
+    <div class="tab">
+      <button class="tablinks" onclick="openCity(event, 'Post')">Post</button>
+      <button class="tablinks" onclick="openCity(event, 'Polls')">Poll</button>
+      <button class="tablinks" onclick="openCity(event, 'Event')">Event</button>
+      <button class="tablinks" onclick="openCity(event, 'Notification')">Notifications</button>
+      <button class="tablinks" onclick="openCity(event, 'Members')">Members</button>
+    </div>
+
+    <div id="Post" class="block w-full tabcontent">
+      <div class="flex">
+        <h3 class="text-2xl font-bold p-4">Posts</h3>
+
+          {% if check_member %}
+        <button class="bg-blue-500 py-4 px-4 m-2 text-white" type="submit"><a href="{% url 'groups:create_post' request.user.id group.id %}">Create A Post</a></button>
+          {% endif %}
+      </div>
+      <div class="space-y-4 mt-4">``
+
+        {% for post in posts %}
+          <div class="bg-gray-100 p-2">
+            <div class="flex justify-between space-x-2">
+              <div class="flex text-gray-500 text-base items-center">
+                <small>b/{{ post.group.name_of_group }}</small>
+                &nbsp;
+                <small class="font-light">•&nbsp;Posted by u/{{post.member.member}} {{ post.date_created|timesince }} ago</small>
+              </div>
+            </div>
+            <a href="{% url 'groups:post_detail' post.id %}" ><h2 class = "font-semibold text-base ">{{post.title}}</h2></a>
+            <h3 class="p-2">{{ post.body|striptags|truncatechars:200 }}</h3>
+            <div class="flex items-center justify-end gap-4">
+              {% if post.id in likes %}
+                <a href="{% url 'groups:like_post' request.user.id group.id post.id    %}"><i class="fa fa-heart " ></i></a>
+              {% else %}
+                <a href="{% url 'groups:like_post' request.user.id group.id post.id    %}"><i class="fa fa-heart-o " ></i></a>
+              {% endif %}
+
+              {% if check_member.is_admin %}
+                {% if post.is_active %}
+                  <a href="{% url 'groups:hide_post' request.user.id group.id post.id %}"><i class="fa fa-eye-slash"></i></a>
+                {% else %}
+                  <a href="{% url 'groups:hide_post' request.user.id group.id post.id %}"><i class="fa fa-eye"></i></a>
+                {% endif %}
+              {% endif %}
+              {% comment %} <i class="fa fa-share-alt"></i> {% endcomment %}
+              <span class="flex gap-2"><i class="fa fa-comments-o"></i></span>
+            </div>
+          </div>
+        {% empty %}
+        <p>No Post Yet</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if not check_member.is_suspended %}
+    <div id="Polls" class="tabcontent">
+      <div class="flex">
+        <h3 class="text-2xl font-bold p-4">Polls</h3>
+        <a href="{% url 'activities:create_polls' request.user.id group.id %}">
+        <button class="bg-blue-500 py-4 px-4 m-2 text-white" type="submit">Create A Polls</button>
+        </a>
+      </div>
+
+      <ul role="list" class="divide-y divide-gray-200">
+
+        {% for poll in group_polls %}
+        <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+          <div class="flex justify-between space-x-3">
+            <div class="min-w-0 flex-1">
+              <a href="#" class="block focus:outline-none">
+                <p class="text-sm font-medium text-gray-900 truncate">starts on {{poll.start_date}} - ends on {{poll.stop_date}}</p>
+                <p class="text-lg font-semibold text-gray-900 truncate">{{poll.title}}</p>
+              </a>
+              <form  method="POST" action="{% url 'activities:vote_option' request.user.id poll.id %}">
+                {%  for option, value in poll.poll_option.items %}
+                {% csrf_token %}
+              <div class="flex">
+                <div class="flex items-center h-5">
+                    <input id="helper-radio" name="option" aria-describedby="helper-radio-text" type="radio" value={{option}} class="w-4 h-4 text-blue-600 
+                    bg-gray-100 border-gray-300 focus:ring-blue-500 
+                    dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                <div class="ml-2 text-sm flex  ">
+                  <label for="helper-radio" class="font-medium text-gray-600 text-base ">{{option}}</label>
+                  {% if check_member.is_admin %}
+                    <p id="helper-radio-text" class="text-sm font-bold text-gray-400 ml-12 item-right ">{{ value|length|percentage:no_of_members }}%</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+
+            
+            <a href="{% url 'activities:vote_option' request.user.id group.id %}">
+              <button class="bg-blue-500 py-2 px-2 m-1 text-white" type="submit">submit</button>
+            </a>
+          </form>
+          
+        </div>
+      
+          </div>
+ 
+        </li>
+
+        {% endfor %}
+      </ul>
+
+
+
+        {% if check_member.is_admin %}
+       <div class="flex">
+        <h3 class="text-2xl font-bold p-4">List of Polls (Admin View)</h3>
+      </div>
+
+
+      <ul role="list" class="divide-y divide-gray-200">
+        {% for poll in all_polls %}
+
+        <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+          <div class="flex justify-between space-x-3">
+            <div class="min-w-0 flex-1">
+
+
+
+                <p class="text-sm font-medium text-gray-900 truncate">{{poll.creator}}</p>
+                <p class="text-sm text-gray-500 truncate">{{poll.title}}</p>
+
+            </div>
+            <p class="text-sm font-medium text-gray-900 truncate">starts on {{poll.start_date}} - ends on {{poll.stop_date}}</p>
+          </div>
+          <div class="mt-1">
+            <p class="line-clamp-2 text-sm text-gray-600">{{poll.description}}</p>
+          </div>
+
+
+
+          <br>
+          <br>
+            {% comment %}
+<!--          <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">-->
+<!--            <a href="{% url 'activities:edit_event' request.user.id group.id e.id  %}">-->
+<!--                      Update Event-->
+<!--            </a>-->
+<!--          </button>-->
+            {% endcomment %}
+
+
+
+        </li>
+        <br>
+        {% empty %}
+        <p>No Polls Created Yet</p>
+        {% endfor %}
+      </ul>
+
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div id="Event" class="tabcontent">
+      <div class="flex">
+        <h3 class="text-2xl font-bold p-4">Events</h3>
+
+        {% if check_member.is_admin %}
+        <a href="{% url 'activities:create_event' request.user.id group.id %}">
+        <button class="bg-blue-500 py-4 px-4 m-2 text-white" type="submit">Create An Event</button>
+        </a>
+
+        {% comment %} {% if events.count > 0 %} {% endcomment %}
+         <a href="{% url 'activities:event_calendar' request.user.id group.id  %}">
+        <button class="bg-blue-500 py-4 px-4 m-2 text-white" type="submit">Calendar view</button>
+        </a> 
+        {% comment %} {% endif %} {% endcomment %}
+        {% endif %}
+      </div>
+
+      {% comment %} <div class="tab">
+        <button class="tablinks" onclick="openCity(event, 'Post')">List View</button>
+        <button class="tablinks" onclick="openCity(event, 'Polls')">Calender View</button>
+
+      </div> {% endcomment %}
+
+      <ul role="list" class="divide-y divide-gray-200">
+        {% for event in events %}
+        <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+          <div class="flex justify-between space-x-3">
+            <div class="min-w-0 flex-1">
+              <span class="block focus:outline-none">
+                <p class="text-sm font-medium text-gray-900 truncate">{{event.event.creator}}</p>
+                <p class="text-sm text-gray-500 truncate">{{event.event.title}}</p>
+              </span>
+            </div>
+            <time datetime="2021-01-27T16:35" class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500">{{event.event.date_created | timesince}} ago</time>
+          </div>
+          <div class="mt-1">
+            <p class="line-clamp-2 text-sm text-gray-600">{{event.event.description}}</p>
+          </div>
+
+           <a href="{% url 'activities:accept_invite' request.user.id group.id event.event.id event.id  %}">
+          <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">
+
+                      Yes
+          </button>
+           </a>
+
+
+           <a href="{% url 'activities:maybe_invite' request.user.id group.id event.event.id event.id  %}">
+          <button  class="flex-shrink-0 whitespace-nowrap text-sm text-yellow-500" type="submit">
+                      Maybe
+          </button>
+           </a>
+
+
+            <a href="{% url 'activities:reject_invite' request.user.id group.id event.event.id event.id  %}">
+              <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">
+                No
+              </button>
+            </a>
+        </li>
+        {% empty %}
+        <p>No Event at the moment</p>
+        {% endfor %}
+      </ul>
+
+
+      <br>
+      <br>
+      {% if check_member.is_admin %}
+       <div class="flex">
+        <h3 class="text-2xl font-bold p-4">List of Events (Admin View)</h3>
+      </div>
+
+
+      <ul role="list" class="divide-y divide-gray-200">
+        {% for event in all_events %}
+
+        <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+          <div class="flex justify-between space-x-3">
+            <div class="min-w-0 flex-1">
+
+
+
+                <p class="text-sm font-medium text-gray-900 truncate">{{event.creator}}</p>
+                <p class="text-sm text-gray-500 truncate">{{event.title}}</p>
+
+            </div>
+            <time datetime="2021-01-27T16:35" class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500">{{event.date_created | timesince}} ago</time>
+          </div>
+          <div class="mt-1">
+            <p class="line-clamp-2 text-sm text-gray-600">{{event.description}}</p>
+          </div>
+
+            <p>{{event.time_start}} --- {{event.time_end}}</p>
+
+          <br>
+          <br>
+          <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">
+            <a href="{% url 'activities:edit_event' request.user.id group.id event.id  %}">
+                      Update Event
+            </a>
+          </button>
+
+            <br>
+            <br>
+          {{event.yes.count}}
+            <h3>Yes - {{event.for_yes}}</h3>
+            <h3>No - {{event.for_no}}</h3>
+            <h3>Maybe - {{event.for_maybe}}</h3>
+
+        </li>
+        <br>
+        {% empty %}
+        <p>No Event Created Yet</p>
+        {% endfor %}
+      </ul>
+
+      {% endif %}
+        </div>
+
+    </div>
+
+    <div id="Notification" class="tabcontent">
+      <div class="flex">
+        <h3 class="text-2xl font-bold p-4">Group Notifications</h3>
+      </div>
+        {% for notification in notifications %}
+          <div class="p-5 mb-4 bg-gray-50 rounded-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+            <time class="text-lg font-semibold text-gray-900 dark:text-white">{{notification.time_stamp | timesince}} ago
+            <ol class="mt-3 divide-y divider-gray-200 dark:divide-gray-700">
+              <li>
+                <a href="#" class="block items-center p-3 sm:flex hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <div class="text-gray-600 dark:text-gray-400">
+                    <div class="text-base font-normal">
+                      <span class="font-medium text-gray-900 dark:text-white">{{notification.title}}</span>
+                    <div class="text-sm font-normal">{{notification.content}}"</div>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="#" class="block items-center p-3 sm:flex hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <div>
+                    <div class="text-base font-normal text-gray-600 dark:text-gray-400">
+                      <span>{{notification.group.name_of_group}}</span>
+                    </div>
+                  </div>
+                </a>
+              </li>
+            </ol>
+          </div>
+        {% empty %}
+          <p>No Notifications Yet</p>
+        {% endfor %}
+    </div>
+
+    <div id="Members" class="tabcontent">
+      <div class="flex">
+        <h3 class="text-2xl font-bold p-4">Members</h3>
+<!--        <a>-->
+<!--        <button class="bg-blue-500 py-4 px-4 m-2 text-white" type="submit">Create An Event</button>-->
+<!--        </a>-->
+      </div>
+
+      <ul role="list" class="divide-y divide-gray-200">
+        {% for member in members %}
+        <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+          <div class="flex justify-between space-x-3">
+            <div class="min-w-0 flex-1">
+<!--              <a href="#" class="block focus:outline-none">-->
+
+                <p class="text-sm font-medium text-gray-900 truncate">{{member.member.full_name}}</p>
+                <p class="text-sm text-gray-500 truncate">{{member.member.username}}</p>
+<!--              </a>-->
+            </div>
+
+              {% if member.member.id != group.owner.id and request.user.id != member.member.id%}
+                  {% if check_member.is_admin  %}
+                      <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">
+                    <a href="{% url 'groups:remove_member' request.user.id group.id member.member.id  %}">
+                      Remove
+                    </a>
+                      </button>
+
+                      {% if not member.is_suspended %}
+                        <button class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">
+                          <a href="{% url 'groups:suspend_member' request.user.id group.id member.member.id  %}">
+                            Suspend
+                          </a>
+                            </button>
+
+
+                          {% if not member.is_admin and check_member.is_admin %}
+                            <button class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">
+                             <a href="{% url 'groups:make_admin' request.user.id group.id member.member.id %}">
+                           Make Admin
+                            </a>
+                            </button>
+                          {% endif %}
+                      {% endif %}
+                  {% endif %}
+             {% endif %}
+
+          </div>
+          <div class="mt-1">
+
+            {% if member.member.id == group.owner.id %}
+            <p class="line-clamp-2 text-sm text-gray-600"><strong>Owner</strong></p>
+            {% endif %}
+
+            <br>
+
+            {% if member.is_admin %}
+            <p class="line-clamp-2 text-sm text-gray-600">Admin</p>
+              {% if request.user.id == group.owner.id and request.user.id != member.member.id %}
+                <a href="{% url 'groups:remove_as_admin' request.user.id group.id member.member.id %}">
+
+                  <button class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">Remove Admin</button>
+                </a>
+              {% endif %}
+            {% endif %}
+
+          </div>
+        </li>
+        {% empty %}
+        <p>No members Yet, You can do Better !</p>
+        {% endfor %}
+      </ul>
+
+
+{% comment %}
+
+      <h3 class="text-2xl font-bold p-4">Suspended Members</h3>
+      <ul role="list" class="divide-y divide-gray-200">
+        {% for member in suspended_members %}
+        <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+          <div class="flex justify-between space-x-3">
+            <div class="min-w-0 flex-1">
+<!--              <a href="#" class="block focus:outline-none">-->
+                <span class="absolute inset-0" aria-hidden="true"></span>
+                <p class="text-sm font-medium text-gray-900 truncate">{{member.member.full_name}}</p>
+                <p class="text-sm text-gray-500 truncate">{{member.member.username}}</p>
+<!--              </a>-->
+            </div>
+            {% if check_member.is_admin %}
+            <a href="{% url 'groups:remove_member' request.user.id group.id member.member.id  %}">
+              <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">Remove</button>
+            </a>
+
+            <a href="{% url 'groups:unsuspend_member' request.user.id group.id member.member.id  %}">
+              <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">Unsuspend</button>
+            </a>
+            {% endif %}
+          </div>
+          <div class="mt-1">
+
+            <br>
+            {% if member.is_admin %}
+            <p class="line-clamp-2 text-sm text-gray-600">Admin</p>
+            {% endif %}
+          </div>
+        </li>
+        {% empty %}
+        <p>No suspended members Yet, You can do Better !</p>
+        {% endfor %}
+      </ul>
+        {% endcomment %}
+      {% if check_member.is_admin %}
+        <h3 class="text-2xl font-bold p-4">Suspended Members</h3>
+        <ul role="list" class="divide-y divide-gray-200">
+          {% for member in suspended_members %}
+          <li class="relative bg-white py-5 px-4 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600">
+            <div class="flex justify-between space-x-3">
+              <div class="min-w-0 flex-1">
+  <!--              <a href="#" class="block focus:outline-none">-->
+
+                  <p class="text-sm font-medium text-gray-900 truncate">{{member.member.full_name}}</p>
+                  <p class="text-sm text-gray-500 truncate">{{member.member.username}}</p>
+  <!--              </a>-->
+              </div>
+              {% if check_member.is_admin %}
+              <a href="{% url 'groups:remove_member' request.user.id group.id member.member.id  %}">
+                <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">Remove</button>
+              </a>
+
+              <a href="{% url 'groups:unsuspend_member' request.user.id group.id member.member.id  %}">
+                <button  class="flex-shrink-0 whitespace-nowrap text-sm text-gray-500" type="submit">Unsuspend</button>
+              </a>
+              {% endif %}
+            </div>
+            <div class="mt-1">
+
+              <br>
+              {% if member.is_admin %}
+              <p class="line-clamp-2 text-sm text-gray-600">Admin</p>
+              {% endif %}
+            </div>
+          </li>
+          {% empty %}
+          <p>No suspended members Yet, You can do Better !</p>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+
+
+
+    </div>
+
+  </div>
+  <div class="mx-12"></div>
+
+  <script>
+    function openCity(evt, cityName) {
+      var i, tabcontent, tablinks
+      tabcontent = document.getElementsByClassName('tabcontent')
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = 'none'
+      }
+      tablinks = document.getElementsByClassName('tablinks')
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(' active', '')
+      }
+      document.getElementById(cityName).style.display = 'block'
+      evt.currentTarget.className += ' active'
+    }
+  </script>
+{% endblock %}
